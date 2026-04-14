@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Private user profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Verification": {
+      "title": "Verification",
+      "description": "A document verification record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "documentType": { "type": "string" },
+        "matchPercentage": { "type": "number" },
+        "fraudDetected": { "type": "boolean" },
+        "confidenceScore": { "type": "number" },
+        "details": { "type": "string" },
+        "extractedInfo": { "type": "object" },
+        "issues": { "type": "array", "items": { "type": "string" } },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "docFileName": { "type": "string" }
+      },
+      "required": ["ownerUid", "documentType", "matchPercentage", "fraudDetected", "confidenceScore", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/verifications/{verificationId}": {
+      "schema": "Verification",
+      "description": "Verification records"
+    }
+  }
+}

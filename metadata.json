@@ -1,0 +1,6 @@
+{
+  "name": "SmartVerify AI",
+  "description": "Automated document verification and fraud detection system using AI to analyze signatures, IDs, and proofs with confidence scoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

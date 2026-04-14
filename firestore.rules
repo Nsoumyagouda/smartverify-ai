@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - email: string (required) - User email
+    //   - role: string (required) - 'admin' or 'user'
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: verifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - ownerUid: string (required) - UID of the user who performed verification
+    //   - documentType: string (required)
+    //   - matchPercentage: number (required)
+    //   - fraudDetected: bool (required)
+    //   - confidenceScore: number (required)
+    //   - details: string (optional)
+    //   - extractedInfo: map (optional)
+    //   - issues: list (optional)
+    //   - timestamp: timestamp (required)
+    //   - docFileName: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "nsoumyagouda@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && data.email.size() < 256 &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidVerification(data) {
+      return data.keys().hasAll(['ownerUid', 'documentType', 'matchPercentage', 'fraudDetected', 'confidenceScore', 'timestamp']) &&
+             data.ownerUid == request.auth.uid &&
+             data.documentType is string && data.documentType.size() < 100 &&
+             data.matchPercentage is number && data.matchPercentage >= 0 && data.matchPercentage <= 100 &&
+             data.fraudDetected is bool &&
+             data.confidenceScore is number && data.confidenceScore >= 0 && data.confidenceScore <= 100 &&
+             data.timestamp is timestamp &&
+             (!('details' in data) || (data.details is string && data.details.size() < 5000)) &&
+             (!('issues' in data) || (data.issues is list && data.issues.size() < 50));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+    }
+
+    match /verifications/{verificationId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidVerification(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+  }
+}
